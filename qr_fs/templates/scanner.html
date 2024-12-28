@@ -6,26 +6,105 @@
     <title>QR Code Scanner</title>
     <!-- Include the script from jsDelivr -->
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <!-- Add CSS for better styling -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to right, #0000ff, #00ffff);
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        h2 {
+            margin: 0;
+            color: #555;
+        }
+        #reader {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            background-color: #f0f8ff; /* Light blue background for the scanner */
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .message {
+            margin-top: 20px;
+            color: #333;
+            font-size: 16px;
+        }
+        .message.error {
+            color: #ff0000;
+        }
+        .logout-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #0000ff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .logout-button:hover {
+            background-color: #00ffff;
+        }
+        footer {
+            margin-top: 20px;
+            color: #666;
+        }
+    </style>
 </head>
 <body>
-    <h1>QR Code Scanner</h1>
-    <div id="reader" style="width:300px;"></div>
+    <div class="container">
+        <h1>QR Code Scanner</h1>
+        <h2>HAL Hackathon Food Service</h2>
+        <div id="reader"></div>
+        <div id="message" class="message"></div>
+        <a href="/logout" class="logout-button">Logout</a>
+        <footer>Developed by Abhishek R and Team Technical</footer>
+    </div>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             function onScanSuccess(decodedText, decodedResult) {
                 console.log(`Code scanned = ${decodedText}`);
-                fetch('/scan', {
+                fetch('/scan_qr', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
                     body: `id=${decodedText}`,
                 })
-                .then(response => response.text())
-                .then(data => {
-                    alert(data);
+                .then(response => response.text().then(data => ({status: response.status, body: data})))
+                .then(result => {
+                    const messageElement = document.getElementById('message');
+                    if (result.status === 200) {
+                        messageElement.className = 'message';
+                        messageElement.textContent = result.body;
+                    } else {
+                        messageElement.className = 'message error';
+                        messageElement.textContent = result.body;
+                    }
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => {
+                    const messageElement = document.getElementById('message');
+                    messageElement.className = 'message error';
+                    messageElement.textContent = 'An error occurred. Please try again.';
+                    console.error('Error:', error);
+                });
             }
 
             function onScanFailure(error) {
