@@ -24,9 +24,9 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS participants (
             id TEXT PRIMARY KEY,
-            breakfast BOOLEAN,
-            lunch BOOLEAN,
-            dinner BOOLEAN
+            breakfast BOOLEAN DEFAULT 0,
+            lunch BOOLEAN DEFAULT 0,
+            dinner BOOLEAN DEFAULT 0
         )
     ''')
     conn.commit()
@@ -44,7 +44,7 @@ class User(UserMixin):
         return bcrypt.check_password_hash(self.password_hash, password)
 
 users = {
-    'admin': User('1', 'admin', bcrypt.generate_password_hash('password').decode('utf-8'))
+    'admin': User('1', 'admin', bcrypt.generate_password_hash('Virus').decode('utf-8'))
 }
 
 @login_manager.user_loader
@@ -87,7 +87,7 @@ def get_current_meal():
         return 'breakfast'
     elif datetime.strptime('14:00:00', '%H:%M:%S').time() <= now < datetime.strptime('20:00:00', '%H:%M:%S').time():
         return 'lunch'
-    elif datetime.strptime('18:00:00', '%H:%M:%S').time() <= now < datetime.strptime('21:00:00', '%H:%M:%S').time():
+    elif datetime.strptime('18:00:00', '%H:%M:%S').time() <= now < datetime.strptime('22:00:00', '%H:%M:%S').time():
         return 'dinner'
     else:
         return None  # Out of meal times
@@ -99,36 +99,44 @@ def scan_qr():
     logging.info("Received a scan request...")
     participant_id = request.form['id']
     meal_type = get_current_meal()
-    
+
     if meal_type is None:
         logging.error("Meal type is none. Scanning is only available during meal times.")
-        return "Scanning is only available during meal times", 400
+        return "❌ Scanning is only available during meal times", 400
 
     try:
         conn = sqlite3.connect('qrcodes.db')
         c = conn.cursor()
+
+        # Fetch meal status for the given QR code
         c.execute(f'SELECT {meal_type} FROM participants WHERE id = ?', (participant_id,))
         result = c.fetchone()
-        
+
         if result is None:
             logging.error(f"Invalid QR code: {participant_id}.")
-            return "Invalid QR code", 400
+            return "❌ Invalid QR code", 400
+
+        # Add logging to check the value of result
+        logging.info(f"Current meal status for {meal_type}: {result[0]}")
+
         if result[0] == 0:  # Not scanned yet for this meal
             c.execute(f'UPDATE participants SET {meal_type} = 1 WHERE id = ?', (participant_id,))
-            conn.commit()
+            conn.commit()  # Ensure the commit happens
             logging.info(f"QR code valid for {meal_type}, food can be served.")
-            return f"QR code valid for {meal_type}, food can be served", 200
+            return f"✅ QR code valid for {meal_type}, food can be served", 200
         else:  # Already scanned for this meal
             logging.info(f"QR code already scanned for {meal_type}. Participant ID: {participant_id}")
-            return f"QR code already scanned for {meal_type}", 400
+            return f"❌ QR code already scanned for {meal_type}", 400
+
     except Exception as e:
         logging.error(f"An error occurred: {e}")
-        return "An error occurred. Please try again.", 500
+        return "❌ An error occurred. Please try again.", 500
+
     finally:
         conn.close()
 
-print("App setup complete.")
+
 
 if __name__ == '__main__':
-    init_db()
+    init_db()  # Ensure database is initialized
     app.run(debug=True, host="0.0.0.0", port=5000)

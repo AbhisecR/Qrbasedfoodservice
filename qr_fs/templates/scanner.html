@@ -4,14 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Scanner</title>
-    <!-- Include the script from jsDelivr -->
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode/minified/html5-qrcode.min.js"></script>
-    <!-- Add CSS for better styling -->
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -20,35 +16,43 @@
         }
         .container {
             text-align: center;
-            background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+            background: rgba(255, 255, 255, 0.9);
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         h1 {
-            margin-bottom: 10px;
             color: #333;
         }
         h2 {
-            margin: 0;
             color: #555;
         }
         #reader {
             width: 100%;
             max-width: 400px;
             margin: 20px auto;
-            background-color: #f0f8ff; /* Light blue background for the scanner */
+            background-color: #f0f8ff;
             border: 2px solid #ccc;
             border-radius: 10px;
             padding: 10px;
         }
         .message {
             margin-top: 20px;
-            color: #333;
-            font-size: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .message.success {
+            color: green;
         }
         .message.error {
-            color: #ff0000;
+            color: red;
+        }
+        .icon {
+            margin-right: 10px;
+            font-size: 24px;
         }
         .logout-button {
             display: inline-block;
@@ -62,10 +66,6 @@
         .logout-button:hover {
             background-color: #00ffff;
         }
-        footer {
-            margin-top: 20px;
-            color: #666;
-        }
     </style>
 </head>
 <body>
@@ -75,40 +75,54 @@
         <div id="reader"></div>
         <div id="message" class="message"></div>
         <a href="/logout" class="logout-button">Logout</a>
-        <footer>Developed by HAL Technical Team</footer>
     </div>
+
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            function onScanSuccess(decodedText, decodedResult) {
-                console.log(`Code scanned = ${decodedText}`);
+            let isScanningEnabled = true; // Variable to track if scanning is allowed
+
+            function showMessage(text, isSuccess) {
+                const messageElement = document.getElementById('message');
+                messageElement.innerHTML = `<span class="icon">${isSuccess ? '✅' : '❌'}</span> ${text}`;
+                messageElement.className = `message ${isSuccess ? 'success' : 'error'}`;
+            }
+
+            function onScanSuccess(decodedText) {
+                if (!isScanningEnabled) return; // Prevent scanning if scanning is disabled
+
+                console.log(`Code scanned: ${decodedText}`);
+                isScanningEnabled = false; // Disable further scanning
+
+                // Show success message immediately after scanning
+                showMessage('Scanning in progress...', true);
+
                 fetch('/scan_qr', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: `id=${decodedText}`,
                 })
-                .then(response => response.text().then(data => ({status: response.status, body: data})))
+                .then(response => response.text().then(data => ({ status: response.status, body: data })))
                 .then(result => {
-                    const messageElement = document.getElementById('message');
-                    if (result.status === 200) {
-                        messageElement.className = 'message';
-                        messageElement.textContent = result.body;
-                    } else {
-                        messageElement.className = 'message error';
-                        messageElement.textContent = result.body;
-                    }
+                    showMessage(result.body, result.status === 200);
+
+                    // Re-enable scanning after a cooldown period (e.g., 2 seconds)
+                    setTimeout(() => {
+                        isScanningEnabled = true;
+                    }, 2000);
                 })
                 .catch(error => {
-                    const messageElement = document.getElementById('message');
-                    messageElement.className = 'message error';
-                    messageElement.textContent = 'An error occurred. Please try again.';
                     console.error('Error:', error);
+                    showMessage('An error occurred. Please try again.', false);
+
+                    // Re-enable scanning in case of error as well
+                    setTimeout(() => {
+                        isScanningEnabled = true;
+                    }, 2000);
                 });
             }
 
             function onScanFailure(error) {
-                console.warn(`Code scan error = ${error}`);
+                console.warn(`Code scan error: ${error}`);
             }
 
             let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
