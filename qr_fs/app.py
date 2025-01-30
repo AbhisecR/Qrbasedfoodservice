@@ -4,6 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_bcrypt import Bcrypt
 from datetime import datetime
 import logging
+import pytz
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -81,16 +82,31 @@ def scan_page():
     return render_template('scanner.html')
 
 # Determine the current meal
+
 def get_current_meal():
-    now = datetime.now().time()
-    if datetime.strptime('10:00:00', '%H:%M:%S').time() <= now < datetime.strptime('13:00:00', '%H:%M:%S').time():
+    # Set the correct timezone (Change 'Asia/Kolkata' to your timezone)
+    timezone = pytz.timezone('Asia/Kolkata')  # Example for IST
+    now = datetime.now(timezone).time()
+
+    breakfast_start = datetime.strptime('08:00:00', '%H:%M:%S').time()
+    breakfast_end = datetime.strptime('11:59:59', '%H:%M:%S').time()
+
+    lunch_start = datetime.strptime('13:00:00', '%H:%M:%S').time()
+    lunch_end = datetime.strptime('16:59:59', '%H:%M:%S').time()
+
+    dinner_start = datetime.strptime('19:00:00', '%H:%M:%S').time()
+    dinner_end = datetime.strptime('23:00:00', '%H:%M:%S').time()
+
+    print(f"Server time: {now}")  # Debugging
+
+    if breakfast_start <= now <= breakfast_end:
         return 'breakfast'
-    elif datetime.strptime('14:00:00', '%H:%M:%S').time() <= now < datetime.strptime('20:00:00', '%H:%M:%S').time():
+    elif lunch_start <= now <= lunch_end:
         return 'lunch'
-    elif datetime.strptime('18:00:00', '%H:%M:%S').time() <= now < datetime.strptime('22:00:00', '%H:%M:%S').time():
+    elif dinner_start <= now <= dinner_end:
         return 'dinner'
     else:
-        return None  # Out of meal times
+        return None  # Outside meal times
 
 # Endpoint to scan QR code
 @app.route('/scan_qr', methods=['POST'])
