@@ -83,7 +83,7 @@ def scan_page():
 # Determine the current meal
 def get_current_meal():
     now = datetime.now().time()
-    if datetime.strptime('06:00:00', '%H:%M:%S').time() <= now < datetime.strptime('10:00:00', '%H:%M:%S').time():
+    if datetime.strptime('10:00:00', '%H:%M:%S').time() <= now < datetime.strptime('13:00:00', '%H:%M:%S').time():
         return 'breakfast'
     elif datetime.strptime('14:00:00', '%H:%M:%S').time() <= now < datetime.strptime('20:00:00', '%H:%M:%S').time():
         return 'lunch'
@@ -140,3 +140,5 @@ def scan_qr():
 if __name__ == '__main__':
     init_db()  # Ensure database is initialized
     app.run(debug=True, host="0.0.0.0", port=5000)
+
+     
